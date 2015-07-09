@@ -14,6 +14,7 @@ namespace ZPDBAnalyzer
         {
             DateTime start = DateTime.Now;
             using (var filestream = new FileStream("ZPFullDB.xml", FileMode.Open))
+            //using (var filestream = new FileStream("ZPLightDB.xml", FileMode.Open))
             {
                 var database = MediaWikiType.serializer.Deserialize(filestream) as MediaWikiType;
                 var pages = database.getPages();
@@ -27,7 +28,7 @@ namespace ZPDBAnalyzer
                     new Filtering("wikia", x =>
                     {
                         var split = x.getText().Split(new[] {".wikia.com"}, StringSplitOptions.None);
-                        return split.Any(y => y != split[split.Length - 1] && !y.EndsWith("zeropunctuation"));
+                        return split.Any(y => y != split.Last() && !y.EndsWith("zeropunctuation"));
                     }),
                     new Filtering("nolinks", x => !x.getText().Contains('[')),
                     new Filtering("wrongpedia", x =>
@@ -39,9 +40,15 @@ namespace ZPDBAnalyzer
                             {
                                 if (y == splitA[0])
                                     return false;
-                                var title = y.Split('|')[1].Split(']')[0].Replace("\"", "");
-                                return pages.Any(
-                                    z => z.title.Equals(title));
+                                var titlesplit = y.Split('|');
+                                if (titlesplit.Length > 1)
+                                {
+                                    var title = titlesplit[1].Split(']')[0].Replace("\"", "");
+                                    return pages.Any(
+                                        z => z.title.Equals(title));
+                                }
+                                else
+                                    return false;
                             })
                             ||
                             splitB.Any(y =>
@@ -54,14 +61,19 @@ namespace ZPDBAnalyzer
                             });
                     }),
                     new Filtering("linebreaks",
-                        x => Regex.IsMatch(x.getText(), "[^\u000a]\u000a\\[")),
+                        x => Regex.IsMatch(x.getText(), "[^\u000a]\u000a\\[^\u000a]")),
+                    //new Filtering("Find Grim Fandango", x=> x.getText().Contains("Grim Fandango")), 
+                    new Filtering("Not in category Episode", x=> !x.getText().Contains("[[Category:Episode]]") && !x.getText().Contains("[[Category:episode]]")), 
+                    new Filtering("empty text", x=> x.getText() == String.Empty), 
+                    new Filtering("noaddenda", x=> !x.getText().Contains("Addend") && !x.getText().Contains("Credits")),     
                     //x => x.getText().Contains("\u000a\u000a\u000a")),
                     //x => Regex.IsMatch(x.getText(), "[^\u000a]*\u000a(\u000a\u000a)*[^\u000a]*")),
                 };
 
+                
                 Parallel.ForEach(filterings, x => x.results = pages.Where(x.filterfunc));
                 //foreach (var analysis in filterings)
-                  //  analysis.results = pages.Where(analysis.filterfunc);
+                //  analysis.results = pages.Where(analysis.filterfunc);
 
                 if (true)
                     foreach (var analysis in filterings)
@@ -78,14 +90,17 @@ namespace ZPDBAnalyzer
                     Console.WriteLine(analysis.name + ": " + analysis.results.Count());
                 Console.WriteLine();
             }
-            /*
-            XDocument fulldb = XDocument.Load("ZPFullDB.xml");
-            XDocument articles = Processing.getArticles(fulldb);
-            articles.Save("ZPArticles.xml");
 
-            XDocument withdoublespace = Processing.getWithMultiSpace(articles);
-            withdoublespace.Save("doublespace.xml");
-            */
+            if (false)
+            {
+                XDocument fulldb = XDocument.Load("ZPFullDB.xml");
+                XDocument articles = Processing.getArticles(fulldb);
+                articles.Save("ZPArticles.xml");
+            }
+
+            //XDocument withdoublespace = Processing.getWithMultiSpace(articles);
+            //withdoublespace.Save("doublespace.xml");
+            
             DateTime end = DateTime.Now;
             Console.WriteLine("Run in " + (end - start));
             Console.WriteLine("Processing complete. Hit any key to exit.");

@@ -9,7 +9,7 @@ namespace ZPDBAnalyzer
     {
         public String getText()
         {
-            return (this.Items[0] as RevisionType).text.Value;
+            return (this.Items.Last() as RevisionType).text.Value ?? String.Empty;
         }
     }
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -13,11 +14,11 @@ namespace ZPDBAnalyzer
         private static void Main(string[] args)
         {
             DateTime start = DateTime.Now;
-            using (var filestream = new FileStream("ZPFullDB.xml", FileMode.Open))
-            //using (var filestream = new FileStream("ZPLightDB.xml", FileMode.Open))
+            //using (var filestream = new FileStream("ZPFullDB.xml", FileMode.Open))
+            using (var filestream = new FileStream("C:\\Users\\Michael\\Documents\\Visual Studio 2013\\Projects\\ZPDBAnalyzer\\EscapistFetch\\bin\\Debug\\ZPLightDB.xml", FileMode.Open))
             {
                 var database = MediaWikiType.serializer.Deserialize(filestream) as MediaWikiType;
-                var pages = database.getPages();
+                var pages = database.getEpisodes();
 
                 Filtering[] filterings =
                 {
@@ -63,9 +64,10 @@ namespace ZPDBAnalyzer
                     new Filtering("linebreaks",
                         x => Regex.IsMatch(x.getText(), "[^\u000a]\u000a\\[^\u000a]")),
                     //new Filtering("Find Grim Fandango", x=> x.getText().Contains("Grim Fandango")), 
-                    new Filtering("Not in category Episode", x=> !x.getText().Contains("[[Category:Episode]]") && !x.getText().Contains("[[Category:episode]]")), 
-                    new Filtering("empty text", x=> x.getText() == String.Empty), 
+                    new Filtering("Not in category Episode", x=> !x.isEpisode()), 
+                    new Filtering("empty text", x=> x.getText() == string.Empty), 
                     new Filtering("noaddenda", x=> !x.getText().Contains("Addend") && !x.getText().Contains("Credits")),     
+                    new Filtering("notranscript", x=> !x.getText().Replace(" ","").Contains("==Transcript==")),
                     //x => x.getText().Contains("\u000a\u000a\u000a")),
                     //x => Regex.IsMatch(x.getText(), "[^\u000a]*\u000a(\u000a\u000a)*[^\u000a]*")),
                 };
@@ -91,68 +93,14 @@ namespace ZPDBAnalyzer
                 Console.WriteLine();
             }
 
-            if (false)
-            {
-                XDocument fulldb = XDocument.Load("ZPFullDB.xml");
-                XDocument articles = Processing.getArticles(fulldb);
-                articles.Save("ZPArticles.xml");
-            }
-
-            //XDocument withdoublespace = Processing.getWithMultiSpace(articles);
-            //withdoublespace.Save("doublespace.xml");
-            
             DateTime end = DateTime.Now;
             Console.WriteLine("Run in " + (end - start));
-            Console.WriteLine("Processing complete. Hit any key to exit.");
-            Console.ReadKey();
+            if (Debugger.IsAttached)
+            {
+                Console.WriteLine("Processing complete. Hit any key to exit.");
+                Console.ReadKey();
+            }
         }
     }
-
-    internal class Processing
-    {
-        public static XDocument getArticles(XDocument basedoc)
-        {
-            var result = new XDocument();
-            var rootnode = new XElement(XName.Get("articles"));
-            IEnumerable<XElement> pages = basedoc.Descendants()
-                .Where(
-                    x =>
-                        x.Name.LocalName.Equals("page") &&
-                        x.Descendants().First(y => y.Name.LocalName.Equals("ns")).Value.Equals("0") &&
-                        x.Descendants().FirstOrDefault(z => z.Name.LocalName.Equals("redirect title")) == null);
-            rootnode.Add(pages);
-            foreach (XElement page in pages)
-                rootnode.Add(page);
-
-            result.Add(rootnode);
-            Console.WriteLine(pages.ToArray().Length + " articles detected");
-            return result;
-        }
-
-        public static XDocument getWithMultiSpace(XDocument articles)
-        {
-            var result = new XDocument();
-            IEnumerable<XElement> pages = articles.Descendants().Where(
-                x =>
-                {
-                    XElement revision =
-                        x.Descendants().FirstOrDefault(y => y.Name.LocalName.Equals("revision"));
-                    if (revision == null)
-                        Console.WriteLine("Name :" +
-                                          x.Descendants().FirstOrDefault(y => y.Name.LocalName.Equals("title")).Value);
-                    return true;
-                    //    x.Descendants().FirstOrDefault(z => z.Name.LocalName.Equals("redirect title")) == null
-                    ;
-                    // var revision = x.Descendants().First(y => y.Name.LocalName.Equals("revision"));
-                    //var text = revision.Descendants().First(z => z.Name.LocalName.Equals("text"));
-                    //return text.Value.Contains("  ");
-                });
-            var rootnode = new XElement(XName.Get("articles"));
-            //foreach (XElement page in pages)
-            //  Console.WriteLine(page.Descendants().First(x => x.Name.LocalName.Equals("title")).Value);
-            rootnode.Add(pages);
-            result.Add(rootnode);
-            return result;
-        }
-    }
+    
 }

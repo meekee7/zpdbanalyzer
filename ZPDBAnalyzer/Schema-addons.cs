@@ -7,9 +7,14 @@ namespace ZPDBAnalyzer
 {
     public partial class PageType
     {
-        public String getText()
+        public string getText()
         {
-            return (this.Items.Last() as RevisionType).text.Value ?? String.Empty;
+            return (this.Items.Last() as RevisionType).text.Value ?? string.Empty;
+        }
+
+        public bool isEpisode()
+        {
+            return this.getText().Contains("[[Category:Episode") || this.getText().Contains("[[Category:episode");
         }
     }
 
@@ -17,15 +22,20 @@ namespace ZPDBAnalyzer
     {
         public static XmlSerializer serializer = new XmlSerializer(typeof (MediaWikiType));
 
-        public IEnumerable<PageType> getPages()
+        public List<PageType> getPages()
         {
-            return this.page.Where(x => x.ns == "0" && x.redirect == null);
+            return this.page.Where(x => x.ns == "0" && x.redirect == null).ToList();
+        }
+
+        public List<PageType> getEpisodes()
+        {
+            return this.page.Where(x => x.ns == "0" && x.redirect == null && x.isEpisode()).ToList();
         }
     }
 
     public class Filtering
     {
-        public String name;
+        public string name;
         public IEnumerable<PageType> results;
         public Func<PageType, bool> filterfunc;
 

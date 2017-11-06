@@ -2,12 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 
-namespace ZPDBProject
+namespace WikiaInsertionBrowser
 {
     public static class IO
     {
@@ -143,6 +142,11 @@ namespace ZPDBProject
         public string categories;
         [XmlElement]
         public string othercontent;
+
+        public override string ToString()
+        {
+            return this.number + " " + this.name;
+        }
 
         public string lengthString()
         {

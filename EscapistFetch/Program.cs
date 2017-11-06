@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Net;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -14,6 +17,8 @@ using ZPDBProject;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using ZPDBAnalyzer;
+using ZPDBProject.YTTranscript;
+using IO = ZPDBProject.IO;
 
 namespace EscapistFetch
 {
@@ -219,6 +224,50 @@ namespace EscapistFetch
                 sw.Write(sb);
         }
 
+        public static async Task loadLatestExP()
+        {
+            EpisodeList episodes;
+            using (StreamReader sr = File.OpenText("ZPEpisodeDB.xml"))
+                episodes = (EpisodeList)IO.serializer.Deserialize(sr);
+
+            StringReader text;
+            using (StreamReader sw = File.OpenText("ExtraPunctuationURLs.txt"))
+                text = new StringReader(sw.ReadToEnd());
+
+            StringBuilder sb = new StringBuilder();
+            string newl;
+            List<string> urls = new List<string>();
+            while ((newl = text.ReadLine()) != null && newl.Length != 0)
+                urls.Add(newl);
+
+            Console.WriteLine(episodes.episodes.Where(x => x.extrap != null).Select(x => x.extrap.link).Distinct().Count());
+
+
+            ExtraP exp = await getExP(urls[0]);
+            {
+                Episode ep = episodes.episodes.FirstOrDefault(x => x.date.Date.AddDays(6).Equals(exp.date.Date));
+                if (ep == null)
+                {
+                    Console.WriteLine("DID NOT MATCH " + urls[0]);
+                    //sb.AppendLine(line);
+                }
+                else
+                {
+                    ep.extrap = exp;
+                }
+
+
+                Thread.Sleep(3000);
+            }
+
+
+            //using (StreamWriter sw = File.CreateText("ExpNotMatched4.txt"))
+            //   sw.Write(sb);
+
+            using (StreamWriter sw = File.CreateText("ZPEpisodeDB.xml"))
+                IO.serializer.Serialize(sw, episodes);
+        }
+
         public static async Task loadAllExP()
         {
             EpisodeList episodes;
@@ -235,12 +284,12 @@ namespace EscapistFetch
             while ((newl = text.ReadLine()) != null && newl.Length != 0)
                 urls.Add(newl);
 
-            Console.WriteLine(episodes.episodes.Where(x=>x.extrap != null).Select(x=>x.extrap.link).Distinct().Count());
+            Console.WriteLine(episodes.episodes.Where(x => x.extrap != null).Select(x => x.extrap.link).Distinct().Count());
 
             foreach (var line in urls)
             {
-                if (episodes.episodes.All(x=>x.extrap?.link != line) )
-                sb.AppendLine(line);
+                if (episodes.episodes.All(x => x.extrap?.link != line))
+                    sb.AppendLine(line);
                 /*
                 ExtraP exp = await getExP(line);
                 Console.WriteLine(exp.title + "|||" + exp.date.DayOfWeek);
@@ -979,9 +1028,281 @@ namespace EscapistFetch
                 IO.serializer.Serialize(sw, episodes);
         }
 
+        public static void cleanExtraP()
+        {
+            EpisodeList episodes;
+            using (StreamReader sr = File.OpenText("ZPEpisodeDB.xml"))
+                episodes = (EpisodeList)IO.serializer.Deserialize(sr);
+
+            foreach (var ep in episodes.episodes.Where(x => x.extrap != null))
+                ep.extrap.title = ScrubHtml(ep.extrap.title);
+
+            using (StreamWriter sw = File.CreateText("ZPEpisodeDB.xml"))
+                IO.serializer.Serialize(sw, episodes);
+        }
+
+        public static void makeInfoboxes()
+        {
+            EpisodeList episodes;
+            using (StreamReader sr = File.OpenText("ZPEpisodeDB.xml"))
+                episodes = (EpisodeList)IO.serializer.Deserialize(sr);
+
+            StringBuilder sb = new StringBuilder();
+            foreach (var ep in episodes.episodes)
+                sb.AppendLine(ep.toWikiaInfobox() + "\n" + ep.teaser + "\n");
+            using (StreamWriter sw = File.CreateText("Infoboxes.txt"))
+                sw.Write(sb);
+        }
+
+        public static void makeNavbar()
+        {
+            EpisodeList episodes;
+            using (StreamReader sr = File.OpenText("ZPEpisodeDB.xml"))
+                episodes = (EpisodeList)IO.serializer.Deserialize(sr);
+
+            StringBuilder sb = new StringBuilder();
+            List<string> included = new List<string>();
+            for (int i = 2007; i <= 2017; i++)
+            {
+                sb.AppendLine(@"{| class=""mw-collapsible mw-collapsed"" style=""width: 100%;""
+! colspan=""2"" style=""background: yellow;"" | " + i);
+                sb.AppendLine("|-");
+                for (int j = 1; j <= 12; j += 3)
+                {
+                    sb.AppendLine(@"! width=""25%"" style=""background: #FFFF66;"" | Q" + (j + 2) / 3);
+                    var matching = episodes.episodes
+                            .Where(x => x.date.Year == i)
+                            .Where(x => x.date.Month >= j)
+                            .Where(x => x.date.Month <= j + 2)
+                            .OrderBy(x => x.date)
+                            .Select(x => x.name)
+                            .Select(x => "[[" + x + "]]")
+                        ;
+                    included.AddRange(matching);
+                    sb.AppendLine("| " + string.Join(" · ", matching));
+                    sb.AppendLine("|-");
+                }
+                sb.AppendLine("|}");
+            }
+
+            Console.WriteLine(included.Count);
+
+            using (StreamWriter sw = File.CreateText("Navbar.txt"))
+                sw.Write(sb);
+        }
+
+        public static void listNonYT()
+        {
+            EpisodeList episodes;
+            using (StreamReader sr = File.OpenText("ZPEpisodeDB.xml"))
+                episodes = (EpisodeList)IO.serializer.Deserialize(sr);
+
+            foreach (var s in episodes.episodes.Where(x => x.ytlink == null).Select(x => x.name))
+                Console.WriteLine(s);
+        }
+
+        public static void listNonWP()
+        {
+            EpisodeList episodes;
+            using (StreamReader sr = File.OpenText("ZPEpisodeDB.xml"))
+                episodes = (EpisodeList)IO.serializer.Deserialize(sr);
+
+            foreach (var s in episodes.episodes.Where(x => x.reviewed != null && x.reviewed.Any(y => y.wpname == null)).Select(x => x.name))
+                Console.WriteLine(s);
+        }
+
+        public static async Task loadAllTranscripts()
+        {
+            EpisodeList episodes;
+            using (StreamReader sr = File.OpenText("ZPEpisodeDB.xml"))
+                episodes = (EpisodeList)IO.serializer.Deserialize(sr);
+
+            foreach (var ep in episodes.episodes.Reverse().Where(x => x.ytlink != null))
+            {
+                await loadTranscriptOfEpisode(ep);
+                Thread.Sleep(5000);
+            }
+        }
+
+        public static async Task loadSecondToLastTranscript()
+        {
+            EpisodeList episodes;
+            using (StreamReader sr = File.OpenText("ZPEpisodeDB.xml"))
+                episodes = (EpisodeList)IO.serializer.Deserialize(sr);
+
+            var stl = episodes.episodes[episodes.episodes.Length - 2];
+            if (string.IsNullOrEmpty(stl.ytlink))
+            {
+                Console.WriteLine("ERROR: Second to last episode has no YT link");
+                return;
+            }
+
+            await loadTranscriptOfEpisode(stl);
+        }
+
+        public static async Task loadLastTranscript()
+        {
+            EpisodeList episodes;
+            using (StreamReader sr = File.OpenText("ZPEpisodeDB.xml"))
+                episodes = (EpisodeList)IO.serializer.Deserialize(sr);
+
+            var stl = episodes.episodes[episodes.episodes.Length - 1];
+            if (string.IsNullOrEmpty(stl.ytlink))
+            {
+                Console.WriteLine("ERROR: Last episode has no YT link");
+                return;
+            }
+
+            await loadTranscriptOfEpisode(stl);
+        }
+
+        private static async Task loadTranscriptOfEpisode(Episode ep)
+        {
+            try
+            {
+                string videocode = ep.ytlink.Split(new[] { "watch?v=" }, StringSplitOptions.None)[1];
+                WebRequest request = WebRequest.CreateHttp("https://video.google.com/timedtext?lang=en&v=" + videocode);
+                request.Credentials = CredentialCache.DefaultCredentials;
+                HttpWebResponse response = await request.GetResponseAsync() as HttpWebResponse;
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    string text = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                    string name = "" + ep.number;
+                    using (var sw = File.CreateText("transcripts/" + name + ".xml"))
+                        sw.Write(text);
+                    Console.WriteLine("Wrote " + name + " " + ep.name);
+                }
+                else
+                    Console.WriteLine(response.StatusCode + " for " + ep.name);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error requesting " + ep.name + " : " + e);
+            }
+        }
+
+        public static void parseTranscripts()
+        {
+            var dir = Directory.CreateDirectory("transcripts");
+            foreach (var file in dir.EnumerateFiles().Where(x => x.Name.EndsWith(".xml")))
+            {
+                var t = ZPDBProject.YTTranscript.IO.readFile("transcripts/" + file.Name);
+                string text = string.Join(" ", t.text.Select(x => x.Value).Where(x => x != null).Select(x =>
+                          {
+                              x = Regex.Replace(x, @"[\r\n]", " ");
+                              if (x.EndsWith(".") || x.EndsWith("!") || x.EndsWith("?") || x.EndsWith("\""))
+                                  x += "\n";
+                              return x;
+                          })
+                .Select(WebUtility.HtmlDecode)
+                );
+                text = Regex.Replace(text, @"  +", " ");
+                using (StreamWriter sw = File.CreateText("transcripts/" + file.Name.Replace(".xml", "") + ".txt"))
+                    sw.Write(text);
+            }
+        }
+
+        public static async Task downloadAllEpisodes()
+        {
+            EpisodeList episodes;
+            using (StreamReader sr = File.OpenText("ZPEpisodeDB.xml"))
+                episodes = (EpisodeList)IO.serializer.Deserialize(sr);
+
+            foreach (var ep in episodes.episodes.Where(x => !string.IsNullOrEmpty(x.esclink)))
+                await downloadEP(ep);
+        }
+
+        private static async Task downloadEP(Episode ep)
+        {
+            var list = new List<Tuple<bool, ParsingRequest>>();
+            list.Add(new Tuple<bool, ParsingRequest>(false,
+                new ParsingRequest(ep.esclink, ParsingRequest.RESOLUTION.R_360P, ParsingRequest.CONTAINER.C_MP4)));
+            list.Add(new Tuple<bool, ParsingRequest>(false,
+                new ParsingRequest(ep.esclink, ParsingRequest.RESOLUTION.R_480P, ParsingRequest.CONTAINER.C_MP4)));
+            list.Add(new Tuple<bool, ParsingRequest>(false,
+                new ParsingRequest(ep.esclink, ParsingRequest.RESOLUTION.R_360P, ParsingRequest.CONTAINER.C_WEBM)));
+            list.Add(new Tuple<bool, ParsingRequest>(false,
+                new ParsingRequest(ep.esclink, ParsingRequest.RESOLUTION.R_480P, ParsingRequest.CONTAINER.C_WEBM)));
+
+            if (!string.IsNullOrEmpty(ep.reissue?.esclink))
+            {
+                list.Add(new Tuple<bool, ParsingRequest>(true,
+                    new ParsingRequest(ep.reissue.esclink, ParsingRequest.RESOLUTION.R_360P, ParsingRequest.CONTAINER.C_MP4)));
+                list.Add(new Tuple<bool, ParsingRequest>(true,
+                    new ParsingRequest(ep.reissue.esclink, ParsingRequest.RESOLUTION.R_480P, ParsingRequest.CONTAINER.C_MP4)));
+                list.Add(new Tuple<bool, ParsingRequest>(true,
+                    new ParsingRequest(ep.reissue.esclink, ParsingRequest.RESOLUTION.R_360P, ParsingRequest.CONTAINER.C_WEBM)));
+                list.Add(new Tuple<bool, ParsingRequest>(true,
+                    new ParsingRequest(ep.reissue.esclink, ParsingRequest.RESOLUTION.R_480P, ParsingRequest.CONTAINER.C_WEBM)));
+            }
+            Console.Write("" + ep.number + " " + ep.name + " ");
+            foreach (var video in list)
+            {
+                Semaphore semaphore = new Semaphore(0, 1);
+                await Grabber.evaluateURL(
+                    video.Item2,
+                    async exception => Console.WriteLine(exception),
+                    () => { },
+                    () => { },
+                    (async (s, container) =>
+                        @"D:\mydata\escapist\"
+                        + ((container == ParsingRequest.CONTAINER.C_MP4) ? "MP4" : "WEBM")
+                        + (video.Item2.Resolution == ParsingRequest.RESOLUTION.R_360P ? "360" : "480")
+                        + "\\" + s + (video.Item1 ? "-REISSUE" : "") + "." +
+                        ((container == ParsingRequest.CONTAINER.C_MP4) ? "mp4" : "webm")
+                    ),
+                    new Downloadhelper(((arg1, arg2) => { }), ((s, b) => semaphore.Release())),
+                    async (s) => Console.WriteLine(s),
+                    (() => { }),
+                    new CancellationToken(false)
+                );
+                semaphore.WaitOne();
+                await Task.Delay(4000);
+                Console.Write(" - " + video.Item2.Resolution + " " + video.Item2.Container);
+            }
+            Console.Write("\n");
+        }
+
+        public static async Task downloadLatestEP()
+        {
+            EpisodeList episodes;
+            using (StreamReader sr = File.OpenText("ZPEpisodeDB.xml"))
+                episodes = (EpisodeList)IO.serializer.Deserialize(sr);
+
+            await downloadEP(episodes.episodes.Last());
+        }
+
+        public static void newEPProcedure()
+        {
+            addLatestEpisode().Wait();
+            makeInfoboxes();
+            loadSecondToLastTranscript().Wait();
+            parseTranscripts();
+            downloadLatestEP().Wait();
+        }
+
+        public static void countReviewed()
+        {
+            EpisodeList episodes;
+            using (StreamReader sr = File.OpenText("ZPEpisodeDB.xml"))
+                episodes = (EpisodeList)IO.serializer.Deserialize(sr);
+
+            HashSet<string> set = new HashSet<string>();
+            foreach (var ep in episodes.episodes)
+                if (ep.reviewed != null)
+            foreach (var rv in ep.reviewed)
+                set.Add(rv.name);
+
+            Console.WriteLine(set.Count);
+            var list = set.ToList();
+            list.Sort();
+            foreach (var s in list)
+                Console.WriteLine(s);
+        }
+
         public static void Main(string[] args)
         {
-            loadAllExP().Wait();
+            //loadAllExP().Wait();
             //loadExp().Wait();
             //YTMerge();
             //sortAndAddNumbers();
@@ -994,12 +1315,25 @@ namespace EscapistFetch
             //addESCName().Wait();
             //findsub();
             //addSongs();
-            // addLatestEpisode().Wait();
+            //addLatestEpisode().Wait();
+            //listNonYT();
+            //listNonWP();
+            //countReviewed();
+            //loadLatestExP().Wait();
+            //cleanExtraP();
+            makeInfoboxes();
+            //downloadAllEpisodes().Wait();
+            //makeNavbar();
             //listCategories();
             //listReviewed();
             //listReviewedMulti();
             //addAward();
             //readHeadings();
+            //loadAllTranscripts().Wait();
+            //loadSecondToLastTranscript().Wait();
+            loadLastTranscript().Wait();
+            parseTranscripts();
+            //newEPProcedure();
             if (Debugger.IsAttached)
             {
                 Console.WriteLine("Press any key to exit");

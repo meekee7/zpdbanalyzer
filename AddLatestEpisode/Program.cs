@@ -10,7 +10,7 @@ namespace AddLatestEpisode
     {
         static void Main(string[] args)
         {
-            EscapistFetch.Program.addLatestEpisode().Wait();
+            EscapistFetch.Program.newEPProcedure();
         }
     }
 }

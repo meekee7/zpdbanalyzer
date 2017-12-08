@@ -108,7 +108,7 @@ namespace EscapistVideoArchiver
         }
 
         private static string ScrubHtml(string value)
-            //Borrowed from Stackoverflow http://stackoverflow.com/questions/19523913/remove-html-tags-from-string-including-nbsp-in-c-sharp
+        //Borrowed from Stackoverflow http://stackoverflow.com/questions/19523913/remove-html-tags-from-string-including-nbsp-in-c-sharp
         {
             string step1 = Regex.Replace(value, @"<[^>]+>|&nbsp;", "").Trim();
             string step2 = Regex.Replace(step1, @"\s{2,}", " ");
@@ -121,7 +121,9 @@ namespace EscapistVideoArchiver
 
             video.escurl = url;
 
-            WebRequest request = WebRequest.CreateHttp(url);
+            HttpWebRequest request = WebRequest.CreateHttp(url);
+            request.CookieContainer = new CookieContainer();
+            request.CookieContainer.Add(new Cookie("age_gate_birthday", "19870313","/","escapistmagazine.com"));
             request.Credentials = CredentialCache.DefaultCredentials;
             WebResponse response = await request.GetResponseAsync();
 

@@ -1,0 +1,56 @@
+﻿<Window x:Class="EscapistVideoSiphonerGUI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:EscapistVideoSiphonerGUI"
+        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        mc:Ignorable="d"
+        Title="Escapist Video Siphoner" Height="350" Width="525">
+    <Window.TaskbarItemInfo>
+        <TaskbarItemInfo x:Name="taskbar"/>
+    </Window.TaskbarItemInfo>
+    <Grid Margin="10,10,10,10">
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition/>
+            <RowDefinition Height="80"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition/>
+            <ColumnDefinition Width="150"/>
+            <ColumnDefinition Width="150"/>
+        </Grid.ColumnDefinitions>
+
+        <Button x:Name="openlistbtn" Content="Open URL List" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Top" Width="150" Click="openlistbtn_Click"/>
+        <ListBox x:Name="urllist" HorizontalAlignment="Stretch" Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Margin="0,30,0,0"  VerticalAlignment="Stretch" VirtualizingPanel.IsVirtualizing="true"  />
+        <StackPanel Grid.Row="0" Grid.Column="1" Grid.RowSpan="2">
+            <Label Content="Selection Start" HorizontalAlignment="Center"/>
+            <xctk:IntegerUpDown x:Name="startspin" HorizontalAlignment="Center" Width="100" Height="25" Value="1" Minimum="1"/>
+            <Label Content="Selection End" HorizontalAlignment="Center"/>
+            <xctk:IntegerUpDown x:Name="endspin" HorizontalAlignment="Center" Width="100" Height="25" Value="500" Minimum="1"/>
+            <Label Content="Container / Resolution:" HorizontalAlignment="Center"/>
+            <RadioButton x:Name="resmp4360" Content="MP4/360p" HorizontalAlignment="Center" VerticalAlignment="Top" GroupName="ContainerRes"/>
+            <RadioButton x:Name="resmp4480" Content="MP4/480p" IsChecked="True" HorizontalAlignment="Center" VerticalAlignment="Top" GroupName="ContainerRes"/>
+            <RadioButton x:Name="reswebm360" Content="WebM/360p" HorizontalAlignment="Center" VerticalAlignment="Top" GroupName="ContainerRes"/>
+            <RadioButton x:Name="reswebm480" Content="WebM/480p" HorizontalAlignment="Center" VerticalAlignment="Top" GroupName="ContainerRes"/>
+        </StackPanel>
+        <StackPanel Grid.Row="0" Grid.Column="2">
+            <Button x:Name="targetdirbtn" Content="Select Target Directory" HorizontalAlignment="Center" VerticalAlignment="Top" Width="150" Click="targetdirbtn_Click"/>
+            <TextBox x:Name="targetdirtxtbx"  HorizontalAlignment="Center" Margin="10" TextWrapping="WrapWithOverflow" Text="$targetdir" VerticalAlignment="Top" Width="120"/>
+        </StackPanel>
+        <StackPanel Grid.Row="1" Grid.Column="2">
+            <Button x:Name="startbtn" Content="Start" HorizontalAlignment="Center" VerticalAlignment="Top" Width="75" Click="startbtn_Click"/>
+            <Button x:Name="cancelbtn" Content="Cancel" HorizontalAlignment="Center" VerticalAlignment="Top" Width="75" Click="cancelbtn_Click"/>
+            <Separator Width="75" Height="10"/>
+            <Button x:Name="continuebtn" Content="Continue" HorizontalAlignment="Center" VerticalAlignment="Top" Width="75" Click="continuebtn_Click"/>
+            <Button x:Name="pausebtn" Content="Pause" HorizontalAlignment="Center"  VerticalAlignment="Top" Width="75" Click="pausebtn_Click"/>
+        </StackPanel>
+        <StackPanel Grid.Row="2" Grid.ColumnSpan="3">
+            <Label x:Name="vidproglabel" Content="Video Progress" HorizontalAlignment="Center" VerticalAlignment="Bottom"/>
+            <ProgressBar x:Name="vidprogbar" HorizontalAlignment="Stretch" Height="10" VerticalAlignment="Bottom"/>
+            <Label x:Name="totalproglabel" Content="Total Progress" HorizontalAlignment="Center"  VerticalAlignment="Bottom"/>
+            <ProgressBar x:Name="totalprogbar" HorizontalAlignment="Stretch" Height="10" VerticalAlignment="Bottom"/>
+        </StackPanel>
+    </Grid>
+</Window>

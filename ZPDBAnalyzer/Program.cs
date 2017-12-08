@@ -13,6 +13,7 @@ namespace ZPDBAnalyzer
     {
         private static void Main(string[] args)
         {
+            return;
             DateTime start = DateTime.Now;
             //using (var filestream = new FileStream("ZPFullDB.xml", FileMode.Open))
             using (var filestream = new FileStream("C:\\Users\\Michael\\Documents\\Visual Studio 2013\\Projects\\ZPDBAnalyzer\\EscapistFetch\\bin\\Debug\\ZPLightDB.xml", FileMode.Open))

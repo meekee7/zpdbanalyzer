@@ -14,7 +14,7 @@ namespace EscapistFetch
 {
     public abstract class Downloader
     {
-        protected readonly Action<String, bool> finishhandler;
+        public readonly Action<String, bool> finishhandler;
         protected readonly Action<ulong, ulong> updatehandler;
 
         protected Downloader(Action<ulong, ulong> updatehandler, Action<String, bool> finishhandler)
@@ -194,10 +194,12 @@ namespace EscapistFetch
             var result = new ParsingResult();
             try
             {
-                WebRequest request = WebRequest.CreateHttp(videopage);
+                HttpWebRequest request = WebRequest.CreateHttp(videopage);
                 if (videopage.Equals(ZPLatestURL)) //If we are waiting for a specific episode, then we can allow caching
                     request.Headers[HttpRequestHeader.CacheControl] = "no-cache"; //or use the default mode
                 request.Credentials = CredentialCache.DefaultCredentials;
+                request.CookieContainer = new CookieContainer();
+                request.CookieContainer.Add(new Cookie("age_gate_birthday", "19870313", "/", "escapistmagazine.com"));
                 WebResponse response = await request.GetResponseAsync();
 
                 var htmldoc = new HtmlDocument();
